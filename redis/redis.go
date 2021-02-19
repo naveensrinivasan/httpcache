@@ -44,14 +44,8 @@ func NewWithClient(client redis.Conn) httpcache.Cache {
 	return cache{client}
 }
 
-// NewRedisCacheTransport returns a new Transport using the redis cache implementation
-func NewRedisCacheTransport(client redis.Conn) *httpcache.Transport {
-	t := NewTransport(cache{client})
-	return t
-}
-
-// NewRedisCacheTransport returns a new Transport using the redis cache implementation
-func NewRedisCache(client redis.Conn, roundTripper http.RoundTripper) *httpcache.Transport {
+// New returns a new Transport using the redis cache implementation
+func New(client redis.Conn, roundTripper http.RoundTripper) *httpcache.Transport {
 	return &httpcache.Transport{Cache: cache{client}, MarkCachedResponses: true, Transport: roundTripper}
 }
 
