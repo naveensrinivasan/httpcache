@@ -2,6 +2,8 @@
 package redis
 
 import (
+	"net/http"
+
 	"github.com/gomodule/redigo/redis"
 	"github.com/gregjones/httpcache"
 )
@@ -40,4 +42,21 @@ func (c cache) Delete(key string) {
 // NewWithClient returns a new Cache with the given redis connection.
 func NewWithClient(client redis.Conn) httpcache.Cache {
 	return cache{client}
+}
+
+// NewRedisCacheTransport returns a new Transport using the redis cache implementation
+func NewRedisCacheTransport(client redis.Conn) *httpcache.Transport {
+	t := NewTransport(cache{client})
+	return t
+}
+
+// NewRedisCacheTransport returns a new Transport using the redis cache implementation
+func NewRedisCache(client redis.Conn, roundTripper http.RoundTripper) *httpcache.Transport {
+	return &httpcache.Transport{Cache: cache{client}, MarkCachedResponses: true, Transport: roundTripper}
+}
+
+// NewTransport returns a new Transport with the
+// provided Cache implementation and MarkCachedResponses set to true
+func NewTransport(c httpcache.Cache) *httpcache.Transport {
+	return &httpcache.Transport{Cache: c, MarkCachedResponses: true}
 }
