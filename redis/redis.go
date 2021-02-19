@@ -2,10 +2,11 @@
 package redis
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/gregjones/httpcache"
+	"github.com/naveensrinivasan/httpcache"
 )
 
 // cache is an implementation of httpcache.Cache that caches responses in a
@@ -31,7 +32,11 @@ func (c cache) Get(key string) (resp []byte, ok bool) {
 
 // Set saves a response to the cache as key.
 func (c cache) Set(key string, resp []byte) {
-	c.Do("SET", cacheKey(key), resp)
+	_, e := c.Do("SET", cacheKey(key), resp)
+	if e != nil {
+		log.Fatal(e)
+	}
+
 }
 
 // Delete removes the response with key from the cache.
@@ -44,14 +49,8 @@ func NewWithClient(client redis.Conn) httpcache.Cache {
 	return cache{client}
 }
 
-// NewRedisCacheTransport returns a new Transport using the redis cache implementation
-func NewRedisCacheTransport(client redis.Conn) *httpcache.Transport {
-	t := NewTransport(cache{client})
-	return t
-}
-
-// NewRedisCacheTransport returns a new Transport using the redis cache implementation
-func NewRedisCache(client redis.Conn, roundTripper http.RoundTripper) *httpcache.Transport {
+// New returns a new Transport using the redis cache implementation
+func New(client redis.Conn, roundTripper http.RoundTripper) *httpcache.Transport {
 	return &httpcache.Transport{Cache: cache{client}, MarkCachedResponses: true, Transport: roundTripper}
 }
 
