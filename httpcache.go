@@ -521,7 +521,8 @@ type cachingReadCloser struct {
 	// Underlying ReadCloser.
 	R io.ReadCloser
 	// OnEOF is called with a copy of the content of R when EOF is reached.
-	OnEOF func(io.Reader)
+	OnEOF   func(io.Reader)
+	eofOnce sync.Once
 
 	buf bytes.Buffer // buf stores a copy of the content of R.
 }
@@ -533,13 +534,27 @@ type cachingReadCloser struct {
 func (r *cachingReadCloser) Read(p []byte) (n int, err error) {
 	n, err = r.R.Read(p)
 	r.buf.Write(p[:n])
-	if err == io.EOF || n < len(p) {
-		r.OnEOF(bytes.NewReader(r.buf.Bytes()))
+	if err == io.EOF {
+		r.eofOnce.Do(func() {
+			r.OnEOF(bytes.NewReader(r.buf.Bytes()))
+		})
 	}
 	return n, err
 }
 
+var (
+	dummyBuf = make([]byte, 1)
+	mu       sync.Mutex
+)
+
 func (r *cachingReadCloser) Close() error {
+	r.eofOnce.Do(func() {
+		mu.Lock()
+		if n, err := r.R.Read(dummyBuf); n == 0 && err == io.EOF {
+			r.OnEOF(bytes.NewReader(r.buf.Bytes()))
+		}
+		mu.Unlock()
+	})
 	return r.R.Close()
 }
 
